@@ -6780,8 +6780,11 @@ const THIRD_BASE_REACTION_FRAMES = 18;  // サード（fielders[4]）が動き�
         const LOCK_LINE_2ND = 'キミ よっぽど ヒマなんだね。';
         const LOCK_LINE_3RD = 'もういいかげんにしたら？';
         const LOCK_LINE_AFTER = 'バカだねぇ 本当に ボクを 倒せると 思ったの？';
+        const LOCK_LINE_BYE = 'このせかいではひらくかおとされるかだ。こんな ぜっこうの チャンスを のがすわけ ないだろ！ バイバイ';
+        const LOCK_AFTER_MS = 5000;   // 「バカだねぇ…思ったの？」を出している時間（ミリ秒）
+        const LOCK_BYE_MS = 5000;     // 最後のセリフを言っている時間。このあと強制的にサイトを閉じる（ミリ秒）
         const LOCK_LINE_WIN = 'オマエ… さてはしらないフリしてただけだな？';
-        let lockTauntTimer = null, lockTauntIdx = 0, lockWrongCount = 0, lockSeq = 0, lockWinning = false;
+        let lockTauntTimer = null, lockTauntIdx = 0, lockWrongCount = 0, lockSeq = 0, lockWinning = false, lockDoomed = false;
         const lockTauntBox = document.getElementById('lockTaunt'), lockAttackBtn = document.getElementById('lockAttack');
         function lockSay(faceIdx, text) {
             document.getElementById('lockFace').src = LOCK_FACES[faceIdx];
@@ -6802,6 +6805,8 @@ const THIRD_BASE_REACTION_FRAMES = 18;  // サード（fielders[4]）が動き�
         function lockAttack() {
             const tok = lockSeq;
             lockAttackBtn.classList.remove('show'); lockAttackBtn.disabled = true;
+            lockDoomed = true;   // ここから先はパスワードを受け付けず、最後にサイトが閉じる
+            document.getElementById('lockPass').disabled = true; document.getElementById('lockPassBtn').disabled = true;
             const face = document.getElementById('lockFace'), r = face.getBoundingClientRect();
             const tx = r.left + r.width / 2, ty = r.top + r.height / 2, W = innerWidth, H = innerHeight;
             const N = 28, GAP = 45, FLY = 650;
@@ -6816,7 +6821,16 @@ const THIRD_BASE_REACTION_FRAMES = 18;  // サード（fielders[4]）が動き�
                 setTimeout(() => { if (tok === lockSeq) face.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-7px)' }, { transform: 'translateX(7px)' }, { transform: 'translateX(0)' }], { duration: 120 }); }, i * GAP + FLY);
             }
             setTimeout(() => { if (tok !== lockSeq) return; lockTauntBox.style.visibility = 'hidden'; }, N * GAP + FLY + 150);              // 全部当たったら、花が画面から消える
-            setTimeout(() => { if (tok !== lockSeq) return; lockSay(1, LOCK_LINE_AFTER); }, N * GAP + FLY + 150 + 1000);                  // 1秒後に、花が戻ってしゃべる
+            const tAfter = N * GAP + FLY + 150 + 1000;
+            setTimeout(() => { if (tok !== lockSeq) return; lockSay(1, LOCK_LINE_AFTER); }, tAfter);                                      // 1秒後に、花が戻ってしゃべる
+            setTimeout(() => { if (tok !== lockSeq) return; lockSay(1, LOCK_LINE_BYE); }, tAfter + LOCK_AFTER_MS);                        // そのあと、最後のセリフ
+            setTimeout(lockForceClose, tAfter + LOCK_AFTER_MS + LOCK_BYE_MS);                                                              // 言い終わったら、強制的にサイトを閉じる
+        }
+        // サイトを強制的に閉じる。スクリプトで開いたタブ以外は window.close() が効かないブラウザが多いので、効かなければ空白のページへ移動する
+        function lockForceClose() {
+            document.body.innerHTML = '';
+            try { window.close(); } catch (e) {}
+            setTimeout(() => { try { location.replace('about:blank'); } catch (e) {} }, 200);
         }
         onTap(lockAttackBtn, lockAttack);
         function lockUnlock() {
@@ -6825,7 +6839,7 @@ const THIRD_BASE_REACTION_FRAMES = 18;  // サード（fielders[4]）が動き�
             lockTauntStop(); lockRefresh();
         }
         function lockTryPassword() {
-            if (lockWinning) return;
+            if (lockWinning || lockDoomed) return;
             const inp = document.getElementById('lockPass'), msg = document.getElementById('lockMsg');
             if (inp.value === LOCK_ADMIN_PASSWORD) {
                 inp.value = ''; msg.textContent = '';
