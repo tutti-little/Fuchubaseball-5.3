@@ -6727,7 +6727,8 @@ const THIRD_BASE_REACTION_FRAMES = 18;  // サード（fielders[4]）が動き�
         const LOCK_PREVIEW = /lock-preview/.test(location.hash);
         window.addEventListener('hashchange', () => { if (/lock-preview/.test(location.hash) !== LOCK_PREVIEW) location.reload(); });
         let lockAdminOk = false;
-        if (!LOCK_PREVIEW) { try { lockAdminOk = sessionStorage.getItem('adminUnlocked') === '1'; } catch (e) {} }
+        // 解除の状態は画面の中（メモリ）にだけ持つ：閉じたりリロードしたりすると、またパスワード画面に戻る
+        try { sessionStorage.removeItem('adminUnlocked'); } catch (e) {}   // 以前の版が保存した解除の記録を消す
         const lockEl = document.getElementById('lockScreen');
         // 日本の祝日（祝日法の規定どおりに計算：ハッピーマンデー・春分/秋分・振替休日・国民の休日。2020〜2021年の東京五輪の特例も含む）
         const jpHolidayCache = {};
@@ -6820,7 +6821,6 @@ const THIRD_BASE_REACTION_FRAMES = 18;  // サード（fielders[4]）が動き�
         onTap(lockAttackBtn, lockAttack);
         function lockUnlock() {
             lockAdminOk = true;
-            if (!LOCK_PREVIEW) { try { sessionStorage.setItem('adminUnlocked', '1'); } catch (e) {} }
             document.getElementById('lockMsg').textContent = '';
             lockTauntStop(); lockRefresh();
         }
